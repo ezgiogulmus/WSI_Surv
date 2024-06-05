@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader, RandomSampler
 
+from models.model_transmil import TransMIL
 from models.model_mil import MIL_fc, MIL_fc_mc
 from models.model_clam import CLAM_MB, CLAM_SB
 from utils.utils import *
@@ -129,11 +130,20 @@ def init_model(args, ckpt_path=None, print_net=False):
 		else:
 			raise NotImplementedError
 	
-	else: # args.model_type == 'mil'
+	elif args.model_type == 'mil':
 		if args.n_classes > 2:
 			model = MIL_fc_mc(**model_dict)
 		else:
-			model = MIL_fc(**model_dict)       
+			model = MIL_fc(**model_dict) 
+
+	elif args.model_type == 'transmil':
+		model = TransMIL(**model_dict)
+
+	else:
+		raise NotImplementedError
+
+	if ckpt_path:
+		model.load_state_dict(torch.load(ckpt_path))
 	
 	if ckpt_path:
 		model.load_state_dict(torch.load(ckpt_path))
@@ -331,9 +341,9 @@ def loop_survival(
 		
 		with torch.set_grad_enabled(training):
 			if inst_logger:
-				logits, _, _, _, instance_dict = model(data_WSI, label=y_disc, instance_eval=True, return_features=return_summary)
+				logits, instance_dict = model(data_WSI, label=y_disc, instance_eval=True, return_features=return_summary)
 			else:
-				logits, _, _, _, instance_dict = model(data_WSI, return_features=return_summary)
+				logits, instance_dict = model(data_WSI, return_features=return_summary)
 
 			
 		if discrete_time:
