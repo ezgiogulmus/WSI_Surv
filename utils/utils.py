@@ -137,7 +137,6 @@ def generate_split(cls_ids, val_num, test_num, samples, n_splits = 5,
 		yield sorted(sampled_train_ids), sorted(all_val_ids), sorted(all_test_ids)
 
 
-
 def make_weights_for_balanced_classes_split(dataset):
 	N = float(len(dataset))                                           
 	weight_per_class = [N/len(dataset.slide_cls_ids[c]) for c in range(len(dataset.slide_cls_ids))]                                                                                                     

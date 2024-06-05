@@ -81,9 +81,13 @@ class Generic_WSI_Survival_Dataset(Dataset):
 		slide_data = slide_data[new_cols]
 		
 		self.slide_data = slide_data.reset_index(drop=True)
+		
 		if print_info:
 			self.summarize()
-
+			
+	def getlabel(self, ids):
+		return self.slide_data['label'][ids]
+	
 	def summarize(self):
 		
 		print("label column: {}".format("survival_months"))
@@ -100,14 +104,14 @@ class Generic_WSI_Survival_Dataset(Dataset):
 
 	def get_split_from_df(self, all_splits=None, split_key='train', scaler=None):
 		if split_key == 'all':
-			return Generic_Split(self.slide_data, self.time_breaks, self.indep_vars, self.mode, self.data_dir, patient_dict=self.patient_dict, print_info=self.print_info)
+			return Generic_Split(self.slide_data, self.time_breaks, self.indep_vars, self.mode, self.data_dir, patient_dict=self.patient_dict, print_info=self.print_info, num_classes=self.num_classes)
 		split = all_splits[split_key]
 		split = split.dropna().reset_index(drop=True)
 
 		if len(split) > 0:
 			mask = self.slide_data['slide_id'].isin(split.tolist())
 			df_slice = self.slide_data[mask].reset_index(drop=True)
-			split = Generic_Split(df_slice, self.time_breaks, self.indep_vars, self.mode, self.data_dir, patient_dict=self.patient_dict, print_info=self.print_info)
+			split = Generic_Split(df_slice, self.time_breaks, self.indep_vars, self.mode, self.data_dir, patient_dict=self.patient_dict, print_info=self.print_info, num_classes=self.num_classes)
 		else:
 			split = None
 		
@@ -188,7 +192,7 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 
 class Generic_Split(MIL_Survival_Dataset):
 	def __init__(self, slide_data, time_breaks, indep_vars,
-	mode, data_dir=None, patient_dict=None, print_info=False):
+	mode, data_dir=None, patient_dict=None, print_info=False, num_classes=4):
 		"""
 		Args:
 			slide_data (DataFrame): Data for the current split.
@@ -201,6 +205,9 @@ class Generic_Split(MIL_Survival_Dataset):
 		self.patient_dict = patient_dict
 		self.time_breaks = time_breaks
 		self.print_info = print_info
+		self.slide_cls_ids = [[] for i in range(num_classes)]
+		for i in range(num_classes):
+			self.slide_cls_ids[i] = np.where(self.slide_data['label'] == i)[0]
 		
 		self.mode = mode
 		self.indep_vars = indep_vars

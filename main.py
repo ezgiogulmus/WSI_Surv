@@ -158,49 +158,31 @@ def setup_argparse():
 	parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb', 'mil'], default='clam_sb',  help='type of model (default: clam_sb, clam w/ single attention branch)')
 	parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', help='size of model, does not affect mil')
 	parser.add_argument('--drop_out',        default=.25, type=float, help='Enable dropout (p=0.25)')
-	parser.add_argument('--no_inst_cluster', action='store_true', default=False,
-                     help='disable instance-level clustering')
-	parser.add_argument('--inst_loss', type=str, choices=['svm', 'ce', None], default=None,
-						help='instance-level clustering loss function (default: None)')
-	parser.add_argument('--subtyping', action='store_true', default=False, 
-						help='subtyping problem')
-	parser.add_argument('--bag_weight', type=float, default=0.7,
-						help='clam: weight coefficient for bag-level loss (default: 0.7)')
+	parser.add_argument('--no_inst_cluster', action='store_true', default=False, help='disable instance-level clustering')
+	parser.add_argument('--inst_loss', type=str, choices=['svm', 'ce', None], default="svm", help='instance-level clustering loss function (default: None)')
+	parser.add_argument('--subtyping', action='store_false', default=True, help='subtyping problem')
+	parser.add_argument('--bag_weight', type=float, default=0.7, help='clam: weight coefficient for bag-level loss (default: 0.7)')
 	parser.add_argument('--B', type=int, default=8, help='numbr of positive/negative patches to sample for clam')
 
 	parser.add_argument('--n_classes', type=int, default=4)
 	parser.add_argument('--surv_model', default="discrete", choices=["cont", "discrete"])
-	# parser.add_argument('--tabular_data', default=None)
+	parser.add_argument('--tabular_data', default=None)
 
-	# parser.add_argument('--mm_fusion',        type=str, choices=["crossatt", "concat", "adaptive", "multiply", "bilinear", "lrbilinear", None], default=None)
-	# parser.add_argument('--mm_fusion_type',   type=str, choices=["early", "mid", "late", None], default=None)
-
-	# parser.add_argument('--target_dim', type=int, default=50)
-
-	# parser.add_argument("--mlp_type", default="big", choices=["tiny", "small", "big"])
-	# parser.add_argument("--activation", default="relu", choices=["relu", "leakyrelu", "gelu"])
-	# parser.add_argument("--mlp_skip", default=True, action="store_false")
-	# parser.add_argument("--mlp_depth", default=7, type=int)
-
-	# parser.add_argument("--depth", default=5, type=int)
-	# parser.add_argument("--mha_heads", default=4, type=int)
-	# parser.add_argument("--model_dim", default=None, help="to decrease nb of patch features")
-	# parser.add_argument("--mlp_dim", default=64, type=int, help="Hidden dim during FeedForward")
-	# parser.add_argument("--dim_head", default=32, type=int, help="inner_dim = dim_head * heads")
-	# parser.add_argument("--pool", default="cls", choices=["cls", "mean"])
+	parser.add_argument('--mm_fusion',        type=str, choices=["crossatt", "concat", "adaptive", "multiply", "bilinear", "lrbilinear", None], default=None)
+	parser.add_argument('--mm_fusion_type',   type=str, choices=["early", "mid", "late", None], default=None)
 
 	### Optimizer Parameters + Survival Loss Function
 	parser.add_argument('--opt',             type=str, choices = ['adam', 'sgd'], default='adam')
 	parser.add_argument('--batch_size',      type=int, default=1, help='Batch Size (Default: 1, due to varying bag sizes)')
-	parser.add_argument('--gc',              type=int, default=64, help='Gradient Accumulation Step during training (Gradients are calculated for every 256 patients)')
-	parser.add_argument('--max_epochs',      type=int, default=30, help='Maximum number of epochs to train')
+	parser.add_argument('--gc',              type=int, default=1, help='Gradient Accumulation Step during training (Gradients are calculated for every 256 patients)')
+	parser.add_argument('--max_epochs',      type=int, default=200, help='Maximum number of epochs to train')
 	
-	parser.add_argument('--lr',				 type=float, default=0.001, help='Learning rate')
-	parser.add_argument('--train_fraction',      type=float, default=.5, help='fraction of training patches')
-	parser.add_argument('--reg', 			 type=float, default=0.001, help='L2-regularization weight decay')
+	parser.add_argument('--lr',				 type=float, default=2e-4, help='Learning rate')
+	parser.add_argument('--train_fraction',      type=float, default=1., help='fraction of training patches')
+	parser.add_argument('--reg', 			 type=float, default=1e-5, help='L2-regularization weight decay')
 	
-	parser.add_argument('--weighted_sample', action='store_true', default=False, help='Enable weighted sampling')
-	parser.add_argument('--early_stopping',  default=10, type=int, help='Enable early stopping')
+	parser.add_argument('--weighted_sample', action='store_false', default=True, help='Enable weighted sampling')
+	parser.add_argument('--early_stopping',  default=20, type=int, help='Enable early stopping')
 	parser.add_argument('--bootstrapping', action='store_true', default=False)
 
 
