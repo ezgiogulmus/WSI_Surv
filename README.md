@@ -17,7 +17,7 @@ git clone https://github.com/ezgiogulmus/WSI_Surv.git
 cd WSI_Surv
 ```
 
-Install conda environment and required packages.
+Create a conda environment and install required packages.
 
 ```bash
 conda env create -n wsi_surv python=3.10 -y
@@ -34,7 +34,7 @@ First, extract patch coordinates and patch-level features using the CLAM library
 python main.py --split_dir name_of_the_split_folder --model_type clam_sb --feats_dir path/to/features_directory
 ```
 
-- `model_type`: Options are `clam_sb`, `clam_mb`, `mil`, `transmil`
+- `model_type`: Options are `clam_sb`, `clam_mb`, `mil`, `transmil`.
 
 ## Acknowledgement
 
