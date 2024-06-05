@@ -57,8 +57,8 @@ class TransMIL(nn.Module):
 
 
     def forward(self, data, return_features=False):
-
-        h = data.float() #[B, n, 1024]
+        
+        h = data.unsqueeze(0).float() #[B, n, 1024]
         
         h = self._fc1(h) #[B, n, 512]
         
@@ -66,6 +66,7 @@ class TransMIL(nn.Module):
         H = h.shape[1]
         _H, _W = int(np.ceil(np.sqrt(H))), int(np.ceil(np.sqrt(H)))
         add_length = _H * _W - H
+        
         h = torch.cat([h, h[:,:add_length,:]],dim = 1) #[B, N, 512]
 
         #---->cls_token

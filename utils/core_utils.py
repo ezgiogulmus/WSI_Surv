@@ -158,7 +158,7 @@ def init_model(args, ckpt_path=None, print_net=False):
 	else:
 		raise NotImplementedError
 
-	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3, verbose=True, min_lr=1e-7)
+	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3, min_lr=1e-7)
 
 	if args.surv_model == "cont":
 		loss_fn = CoxSurvLoss(device)
@@ -454,6 +454,9 @@ def loop_survival(
 		writer.add_scalar(f'{split}/loss', loss_surv, epoch)
 		writer.add_scalar(f'{split}/c_index', c_index, epoch)
 		writer.add_scalar(f'{split}/mean_auc', mean_auc, epoch)
+		if not training:
+			writer.add_scalar(f'{split}/ibs', ibs, epoch)
+			writer.add_scalar(f'{split}/lr', scheduler.get_last_lr(), epoch)
 		
 	if early_stopping:
 		assert results_dir
