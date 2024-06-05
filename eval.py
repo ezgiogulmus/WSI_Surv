@@ -1,144 +1,145 @@
 from __future__ import print_function
-
-import numpy as np
-
 import argparse
-import torch
-import torch.nn as nn
-import pdb
-import os
-import pandas as pd
-from utils.utils import *
-from math import floor
-import matplotlib.pyplot as plt
-from dataset_modules.dataset_generic import Generic_WSI_Classification_Dataset, Generic_MIL_Dataset, save_splits
-import h5py
-from utils.eval_utils import *
 
-# Training settings
-parser = argparse.ArgumentParser(description='CLAM Evaluation Script')
-parser.add_argument('--data_root_dir', type=str, default=None,
-                    help='data directory')
-parser.add_argument('--results_dir', type=str, default='./results',
-                    help='relative path to results folder, i.e. '+
-                    'the directory containing models_exp_code relative to project root (default: ./results)')
-parser.add_argument('--save_exp_code', type=str, default=None,
-                    help='experiment code to save eval results')
-parser.add_argument('--models_exp_code', type=str, default=None,
-                    help='experiment code to load trained models (directory under results_dir containing model checkpoints')
-parser.add_argument('--splits_dir', type=str, default=None,
-                    help='splits directory, if using custom splits other than what matches the task (default: None)')
-parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', 
-                    help='size of model (default: small)')
-parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb', 'mil'], default='clam_sb', 
-                    help='type of model (default: clam_sb)')
-parser.add_argument('--k', type=int, default=10, help='number of folds (default: 10)')
-parser.add_argument('--k_start', type=int, default=-1, help='start fold (default: -1, last fold)')
-parser.add_argument('--k_end', type=int, default=-1, help='end fold (default: -1, first fold)')
-parser.add_argument('--fold', type=int, default=-1, help='single fold to evaluate')
-parser.add_argument('--micro_average', action='store_true', default=False, 
-                    help='use micro_average instead of macro_avearge for multiclass AUC')
-parser.add_argument('--split', type=str, choices=['train', 'val', 'test', 'all'], default='test')
-parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
-parser.add_argument('--drop_out', type=float, default=0.25, help='dropout')
-parser.add_argument('--embed_dim', type=int, default=1024)
-args = parser.parse_args()
+import os
+import sys
+import json
+from timeit import default_timer as timer
+import numpy as np
+import pandas as pd
+import torch
+
+### Internal Imports
+from datasets.dataset_survival import MIL_Survival_Dataset
+from utils.core_utils import eval_model
+from utils.utils import get_custom_exp_code, get_tabular_data
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-args.save_dir = os.path.join('./eval_results', 'EVAL_' + str(args.save_exp_code))
-args.models_dir = os.path.join(args.results_dir, str(args.models_exp_code))
+def main(eval_args): 
+	
+	eval_args.results_dir = eval_args.load_from
+	feats_dir = eval_args.feats_dir
+	
+	split_dir = os.path.join('./splits', eval_args.split_name)
+	print("split_dir", split_dir)
+	assert os.path.isdir(split_dir), "Incorrect the split directory"
 
-os.makedirs(args.save_dir, exist_ok=True)
+	csv_path = f"./datasets_csv/{eval_args.split_name}.csv"
+	print("csv_path", csv_path)
+	assert os.path.isfile(csv_path), "Incorrect csv file path"
 
-if args.splits_dir is None:
-    args.splits_dir = args.models_dir
+	load_from = eval_args.load_from
+	test_all = eval_args.test_all
+	
+	with open(os.path.join(eval_args.results_dir, "experiment.json"), "r") as f:
+		config = json.load(f)
 
-assert os.path.isdir(args.models_dir)
-assert os.path.isdir(args.splits_dir)
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--load_from', default=load_from)
+	parser.add_argument('--test_all', default=test_all, action="store_false")
+	parser.add_argument('--split_name', default=eval_args.split_name)
+	for k, v in config.items():
+		parser.add_argument('--' + k, default=v, type=type(v))
+	
+	args = parser.parse_args()
+	
+	survival_time_list = pd.read_csv(config["csv_path"])["survival_months"].values
+	# assert args.nb_tabular_data < 2, "Tabular data integration is not implemented other than age-only scenerio."
+	tabular_cols = []
+	if args.nb_tabular_data > 0:
+		# tabular_cols = ["age"]
+		tabular_cols = get_tabular_data(args)	
 
-settings = {'task': args.task,
-            'split': args.split,
-            'save_dir': args.save_dir, 
-            'models_dir': args.models_dir,
-            'model_type': args.model_type,
-            'drop_out': args.drop_out,
-            'model_size': args.model_size}
+	args.feats_dir = feats_dir
+	args.split_dir = split_dir
+	args.load_from = load_from
+	# args.cv = os.path.basename(args.load_from).split("_")[1]
+	args.dataname = eval_args.split_name
+	print("Experiment Name:", args.run_name)
+	
+	seed_torch(args.seed)
+	
+	if f'{args.dataname}_eval_summary.csv' in os.listdir(eval_args.results_dir):
+		print("Exp Code <%s> already exists! Exiting script." % args.run_name)
+		sys.exit()
 
-with open(args.save_dir + '/eval_experiment_{}.txt'.format(args.save_exp_code), 'w') as f:
-    print(settings, file=f)
-f.close()
+	settings = vars(args)
+	print('\nLoad Dataset')
+	df = pd.read_csv(csv_path)
+	gen_data = np.unique([i.split("_")[-1] for i in tabular_cols if i.split("_")[-1] in ["pro", "rna", "rnz", "dna", "mut", "cnv"]])
+	if len(gen_data) > 0:
+		for g in gen_data:
+			gen_df = pd.read_csv(f"./datasets_csv/{args.dataname}_{g}.csv.zip", compression="zip")
+			df = pd.merge(df, gen_df, on='case_id')#, how="outer")
+	df = df.reset_index(drop=True).drop(df.index[df["event"].isna()]).reset_index(drop=True)
+	surv_dataset = MIL_Survival_Dataset(
+		df=df,
+		data_dir= args.feats_dir,
+		mode= args.mode,
+		print_info = True,
+		n_bins=args.n_classes,
+		indep_vars=tabular_cols,
+		survival_time_list=survival_time_list
+	)
 
-print(settings)
-if args.task == 'task_1_tumor_vs_normal':
-    args.n_classes=2
-    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/tumor_vs_normal_dummy_clean.csv',
-                            data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
-                            shuffle = False, 
-                            print_info = True,
-                            label_dict = {'normal_tissue':0, 'tumor_tissue':1},
-                            patient_strat=False,
-                            ignore=[])
+	print("################# Settings ###################")
+	for key, val in settings.items():
+		print("{}:  {}".format(key, val))  
 
-elif args.task == 'task_2_tumor_subtyping':
-    args.n_classes=3
-    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/tumor_subtyping_dummy_clean.csv',
-                            data_dir= os.path.join(args.data_root_dir, 'tumor_subtyping_resnet_features'),
-                            shuffle = False, 
-                            print_info = True,
-                            label_dict = {'subtype_1':0, 'subtype_2':1, 'subtype_3':2},
-                            patient_strat= False,
-                            ignore=[])
+	if args.k_start == -1:
+		start = 0
+	else:
+		start = args.k_start
+	if args.k_end == -1:
+		end = args.k
+	else:
+		end = args.k_end
+	folds = np.arange(start, end)
+	for cv in folds:
+		
+		if test_all:
+			dataset = surv_dataset.return_splits(return_all=True, stats_path=os.path.join(eval_args.results_dir, f'train_stats_{cv}.csv'))
+		else:
+			assert args.dataname in args.split_dir, "Testing is only possible for the same dataset."
+			_, _, dataset = surv_dataset.return_splits(cv)
+		
+		result_latest = eval_model(dataset, eval_args.results_dir, args, cv)
+	
+		if os.path.isfile(os.path.join(eval_args.results_dir, f'{args.dataname}_eval_summary.csv')):
+			results_df = pd.read_csv(os.path.join(eval_args.results_dir, f'{args.dataname}_eval_summary.csv'))
+			results_df = results_df.append(result_latest, ignore_index=True)
+			results_df.to_csv(os.path.join(eval_args.results_dir, f'{args.dataname}_eval_summary.csv'), index=False)
+		else:
+			pd.DataFrame(result_latest, index=[0], dtype=float).to_csv(os.path.join(eval_args.results_dir, f'{args.dataname}_eval_summary.csv'), index=False)
 
-# elif args.task == 'tcga_kidney_cv':
-#     args.n_classes=3
-#     dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/tcga_kidney_clean.csv',
-#                             data_dir= os.path.join(args.data_root_dir, 'tcga_kidney_20x_features'),
-#                             shuffle = False, 
-#                             print_info = True,
-#                             label_dict = {'TCGA-KICH':0, 'TCGA-KIRC':1, 'TCGA-KIRP':2},
-#                             patient_strat= False,
-#                             ignore=['TCGA-SARC'])
 
-else:
-    raise NotImplementedError
-
-if args.k_start == -1:
-    start = 0
-else:
-    start = args.k_start
-if args.k_end == -1:
-    end = args.k
-else:
-    end = args.k_end
-
-if args.fold == -1:
-    folds = range(start, end)
-else:
-    folds = range(args.fold, args.fold+1)
-ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(fold)) for fold in folds]
-datasets_id = {'train': 0, 'val': 1, 'test': 2, 'all': -1}
+### Sets Seed for reproducible experiments.
+def seed_torch(seed=7):
+	import random
+	random.seed(seed)
+	os.environ['PYTHONHASHSEED'] = str(seed)
+	np.random.seed(seed)
+	torch.manual_seed(seed)
+	if device.type == 'cuda':
+		torch.cuda.manual_seed(seed)
+		torch.cuda.manual_seed_all(seed) # if you are using multi-GPU.
+	torch.backends.cudnn.benchmark = False
+	torch.backends.cudnn.deterministic = True
+     
 
 if __name__ == "__main__":
-    all_results = []
-    all_auc = []
-    all_acc = []
-    for ckpt_idx in range(len(ckpt_paths)):
-        if datasets_id[args.split] < 0:
-            split_dataset = dataset
-        else:
-            csv_path = '{}/splits_{}.csv'.format(args.splits_dir, folds[ckpt_idx])
-            datasets = dataset.return_splits(from_id=False, csv_path=csv_path)
-            split_dataset = datasets[datasets_id[args.split]]
-        model, patient_results, test_error, auc, df  = eval(split_dataset, args, ckpt_paths[ckpt_idx])
-        all_results.append(all_results)
-        all_auc.append(auc)
-        all_acc.append(1-test_error)
-        df.to_csv(os.path.join(args.save_dir, 'fold_{}.csv'.format(folds[ckpt_idx])), index=False)
-
-    final_df = pd.DataFrame({'folds': folds, 'test_auc': all_auc, 'test_acc': all_acc})
-    if len(folds) != args.k:
-        save_name = 'summary_partial_{}_{}.csv'.format(folds[0], folds[-1])
-    else:
-        save_name = 'summary.csv'
-    final_df.to_csv(os.path.join(args.save_dir, save_name))
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--load_from',      type=str, default=None)
+	parser.add_argument('--split_name',   type=str, default=None)
+	parser.add_argument('--feats_dir',   type=str, default=None)
+	parser.add_argument('--test_all',   action='store_false', default=True)
+	eval_args = parser.parse_args()
+	
+	start = timer()
+	results = main(eval_args)
+	end = timer()
+	print("finished!")
+	print("end script")
+	print('Script Time: %f seconds' % (end - start))
+	
