@@ -139,7 +139,6 @@ def setup_argparse():
 	parser.add_argument('--lambda_reg',      type=float, default=1e-4, help='L1-Regularization Strength (Default 1e-4)')
 	parser.add_argument('--alpha_surv',      type=float, default=0.0, help='How much to weigh uncensored patients')
 
-	parser.add_argument('--label_frac',      type=float, default=1.0, help='fraction of training labels (default: 1.0)')
 	parser.add_argument('--weighted_sample', action='store_true', default=True, help='Enable weighted sampling')
 	parser.add_argument('--early_stopping',  action='store_true', default=False, help='Enable early stopping')
 

@@ -217,7 +217,7 @@ def train(datasets: tuple, cur: int, args: Namespace):
 			cur, model, train_loader, epoch, optimizer=optimizer, 
 			writer=writer, loss_fn=loss_fn, gc=args.gc, training=True, 
 			discrete_time=True if args.surv_model == "discrete" else False, 
-			training_frac=args.train_fraction, mode=args.mode, 
+			mode=args.mode, 
 			time_intervals=time_intervals, bag_weight=args.bag_weight, inst_logger=inst_logger
 		)
 		stop = loop_survival(
@@ -313,7 +313,7 @@ def loop_survival(
 	early_stopping=None, writer=None, loss_fn=None, gc=16,
 	results_dir=None, training=False, 
 	return_summary=False,
-	discrete_time=True, training_frac=1., mode="path", 
+	discrete_time=True, mode="path", 
 	train_survival=None, time_intervals=None, cidx_only=False,
 	bag_weight=1, inst_logger=None
 ):
@@ -328,10 +328,6 @@ def loop_survival(
 	all_surv_probs = []
 	for batch_idx, (data_WSI, y_disc, event_time, event, case_id) in enumerate(loader):
 		
-		if training and training_frac < 1.:
-			np.random.seed(7)
-			random_ids = np.random.permutation(np.array(range(data_WSI.shape[0])))[:int(data_WSI.shape[0]*training_frac)]
-			data_WSI = data_WSI[random_ids]
 		data_WSI = data_WSI.to(device)
 				
 		y_disc = y_disc.to(device)
