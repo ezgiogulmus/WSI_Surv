@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='wsi_models',
+    name='wsisurv',
     version='0.1.0',
     description='WSI_SURV',
     url='https://github.com/ezgiogulmus/WSI_Surv',
