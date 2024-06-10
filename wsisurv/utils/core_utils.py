@@ -8,11 +8,11 @@ import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader, RandomSampler
 
-from models.model_transmil import TransMIL
-from models.model_mil import MIL_fc, MIL_fc_mc
-from models.model_clam import CLAM_MB, CLAM_SB
-from utils.utils import *
-from utils.loss_func import CoxSurvLoss, NLLSurvLoss
+from wsisurv.models.model_transmil import TransMIL
+from wsisurv.models.model_mil import MIL_fc, MIL_fc_mc
+from wsisurv.models.model_clam import CLAM_MB, CLAM_SB
+from wsisurv.utils.utils import *
+from wsisurv.utils.loss_func import CoxSurvLoss, NLLSurvLoss
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 

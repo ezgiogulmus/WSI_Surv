@@ -9,15 +9,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-### Internal Imports
-from datasets.dataset_survival import MIL_Survival_Dataset
-from utils.file_utils import save_pkl
-from utils.core_utils import train
-from utils.utils import check_directories, get_data
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def main(args=None):
+def run(args=None):
 	if args is None:
 		args = setup_argparse()
 	seed_torch(args.seed)
@@ -161,7 +156,15 @@ def seed_torch(seed=7):
 	torch.backends.cudnn.deterministic = True
 
 			
-if __name__ == "__main__":
+if __name__ == "__main__" and (__package__ is None or __package__ == ''):
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	sys.path.append(os.path.dirname(script_dir))
+	### Internal Imports
+	from wsisurv.datasets.dataset_survival import MIL_Survival_Dataset
+	from wsisurv.utils.file_utils import save_pkl
+	from wsisurv.utils.core_utils import train
+	from wsisurv.utils.utils import check_directories
+
 	args = setup_argparse()
 	if args.run_config_file:
 		new_run_name = args.run_name
@@ -185,14 +188,14 @@ if __name__ == "__main__":
 		args.max_epochs = max_epochs
 		args.split_dir = args.split_dir.split("/")[-1]
 		start = timer()
-		results = main(args)
+		results = run(args)
 		end = timer()
 		print("finished!")
 		print("end script")
 		print('Script Time: %f seconds' % (end - start))
 	else:
 		start = timer()
-		results = main()
+		results = run()
 		end = timer()
 		print("finished!")
 		print("end script")
