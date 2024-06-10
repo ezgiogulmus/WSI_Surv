@@ -19,6 +19,7 @@ device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def run(args=None):
 	if args is None:
 		args = setup_argparse()
+	args.mode = "path"
 	seed_torch(args.seed)
 
 	args = check_directories(args)
