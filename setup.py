@@ -12,8 +12,8 @@ setup(
     packages=find_packages(exclude=['assets', 'datasets_csv', "splits"]),
     install_requires=[
         "torch>=2.3.0",
-        "numpy", 
-        "pandas", 
+        "numpy==1.23.4", 
+        "pandas==1.4.3",
         "h5py",
         "nystrom_attention",
         "scikit-learn", 
