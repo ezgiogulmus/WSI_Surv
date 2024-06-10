@@ -1,5 +1,4 @@
 import os
-import json
 import numpy as np
 import pandas as pd
 import math
@@ -9,19 +8,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Sampler, WeightedRandomSampler, RandomSampler, SequentialSampler, sampler
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# Same as OViTANet utils.py
-
-def get_tabular_data(args):
-	
-	with open(os.path.join(args.split_dir, "tabular_fs.json"), "r") as f:
-		tabular_fs = json.load(f)
-	split_data = [i.replace(" ", "") for i in args.tabular_data.split(",")]
-	
-	tabular_cols = []
-	for v in split_data:
-		tabular_cols.extend(tabular_fs[v])
-			
-	return sorted(tabular_cols)
 
 
 class SubsetSequentialSampler(Sampler):
@@ -44,10 +30,9 @@ def collate_MIL_survival(batch):
 	label = torch.cat([item[1] for item in batch], dim = 0).type(torch.LongTensor)
 	event_time = torch.FloatTensor([item[2] for item in batch])
 	c = torch.FloatTensor([item[3] for item in batch])
-	tabular = torch.cat([item[4] for item in batch], dim = 0).type(torch.FloatTensor)
-	case_id = np.array([item[5] for item in batch])
+	case_id = np.array([item[4] for item in batch])
 	
-	return [img, label, event_time, c, tabular, case_id]
+	return [img, label, event_time, c, case_id]
 
 def collate_MIL(batch):
 	img = torch.cat([item[0] for item in batch], dim = 0)
@@ -179,7 +164,7 @@ def nth(iterator, n, default=None):
 
 def save_splits(split_datasets, column_keys, filename, boolean_style=False):
 	splits = [split_datasets[i].slide_data['slide_id'] for i in range(len(split_datasets))]
-	# [split_datasets[i].slide_data.to_csv(f"/home/ezgitwo/Desktop/sil{i}.csv") for i in range(len(split_datasets))]
+	
 	if not boolean_style:
 		df = pd.concat(splits, ignore_index=True, axis=1)
 		df.columns = column_keys
@@ -192,7 +177,7 @@ def save_splits(split_datasets, column_keys, filename, boolean_style=False):
 
 	df.to_csv(filename)
 
-def get_custom_exp_code(args, feat_extractor=None):
+def check_directories(args):
 	r"""
 	Updates the argparse.NameSpace with a custom experiment code.
 
@@ -203,23 +188,28 @@ def get_custom_exp_code(args, feat_extractor=None):
 		- args (NameSpace)
 	"""
 	
-	param_code = ''
+	feat_extractor = None
+	if args.feats_dir:
+		feat_extractor = args.feats_dir.split('/')[-1] if len(args.feats_dir.split('/')[-1]) > 0 else args.feats_dir.split('/')[-2]
+		if feat_extractor == "RESNET50":
+			args.path_input_dim = 2048 
+		elif feat_extractor in ["PLIP", "CONCH"]:
+			args.path_input_dim = 512 
+		elif feat_extractor == "UNI":
+			args.path_input_dim = 1024
+		else:
+			args.path_input_dim = 768
 
-	### Model Type
-	param_code += args.model_type.upper()
+	args.split_dir = os.path.join(args.split_dir, args.data_name)
+	print("split_dir", args.split_dir)
+	assert os.path.isdir(args.split_dir)
 
-	inputs = []
+	param_code = args.model_type.upper()
+		
 	if feat_extractor:
 		param_code += "_" + feat_extractor
-		inputs.append("path")
-	if args.tabular_data:
-		inputs.append("tab")
-	args.mode = ("+").join(inputs)
 	
-	param_code += '_' + args.mode
-	# param_code += '_%scls' % str(args.n_classes)
-	
-	### Updating
-	args.param_code = param_code
-
+	args.results_dir = os.path.join(args.results_dir, param_code, args.run_name)
+	args.csv_path = f"{args.dataset_dir}/"+args.data_name+".csv"
+	assert os.path.isfile(args.csv_path), f"Data file does not exist > {args.csv_path}"
 	return args

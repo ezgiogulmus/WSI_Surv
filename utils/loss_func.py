@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-# Same as OViTANet loss_func.py
 
 class NLLSurvLoss(nn.Module):
     """

@@ -32,10 +32,8 @@ class Generic_WSI_Survival_Dataset(Dataset):
 		self.mode = mode
 		
 		self.indep_vars = indep_vars
-		if self.print_info:
-			print("Number of selected tabular data: ", len(self.indep_vars))
 		
-		slide_data = df[["case_id", "slide_id", "survival_months", "event", "group"]+self.indep_vars]
+		slide_data = df[["case_id", "slide_id", "survival_months", "event"]+self.indep_vars]
 		
 		patients_df = slide_data.drop_duplicates(['case_id']).copy()
 
@@ -169,15 +167,11 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 	def __getitem__(self, idx):
 		
 		case_id = self.slide_data['case_id'].iloc[idx]
-		
 		t = self.slide_data["survival_months"].iloc[idx]
 		e = self.slide_data['event'].iloc[idx]
 		label = torch.Tensor([self.slide_data['disc_label'][idx]])
 		slide_ids = self.patient_dict[case_id]
-		
-		tabular_data = self.slide_data[self.indep_vars].iloc[idx].values
-		tab_tensor = torch.tensor(tabular_data[np.newaxis, :]) if len(tabular_data) > 0 else torch.tensor(np.zeros((1, 1)))
-		
+						
 		if "path" in self.mode:
 			path_features = []
 			for slide_id in slide_ids:
@@ -186,8 +180,8 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 				path_features.append(wsi_bag)
 			path_features = torch.cat(path_features, dim=0)
 		else:
-			path_features = torch.zeros((1,1))
-		return (path_features, label, t, e, tab_tensor, case_id)
+			path_features = torch.zeros((1,))
+		return (path_features, label, t, e, case_id)
 
 
 class Generic_Split(MIL_Survival_Dataset):

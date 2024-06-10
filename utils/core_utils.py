@@ -326,14 +326,13 @@ def loop_survival(
 		
 	all_events, all_risk_scores, all_event_times = [], [], []
 	all_surv_probs = []
-	for batch_idx, (data_WSI, y_disc, event_time, event, data_tab, case_id) in enumerate(loader):
+	for batch_idx, (data_WSI, y_disc, event_time, event, case_id) in enumerate(loader):
 		
 		if training and training_frac < 1.:
 			np.random.seed(7)
 			random_ids = np.random.permutation(np.array(range(data_WSI.shape[0])))[:int(data_WSI.shape[0]*training_frac)]
 			data_WSI = data_WSI[random_ids]
-		data_WSI = data_WSI.to(device) if mode != "tab" else None
-		data_tab = data_tab.to(device) if "tab" in mode else None
+		data_WSI = data_WSI.to(device)
 				
 		y_disc = y_disc.to(device)
 		event_time = event_time.to(device)
