@@ -128,30 +128,6 @@ def setup_argparse():
 	parser.add_argument('--bag_weight', type=float, default=0.7, help='clam: weight coefficient for bag-level loss (default: 0.7)')
 	parser.add_argument('--B', type=int, default=8, help='numbr of positive/negative patches to sample for clam')
 
-	############ Multi-modal Parameters
-	parser.add_argument('--omics', default=None)
-	parser.add_argument('--selected_features',     	 action='store_false', default=True)
-	parser.add_argument('--mode',            type=str, choices=['omic', 'path', 'pathomic', 'cluster', 'coattn'], default='coattn', help='Specifies which modalities to use / collate function in dataloader.')
-	parser.add_argument('--fusion',          type=str, choices=['None', 'concat', 'bilinear'], default='concat', help='Type of fusion. (Default: concat).')
-	parser.add_argument('--apply_sig',		 action='store_true', default=False, help='Use genomic features as signature embeddings.')
-	parser.add_argument('--model_size_wsi',  type=str, default='small', help='Network size of AMIL model')
-	parser.add_argument('--model_size_omic', type=str, default='small', help='Network size of SNN model')
-
-	# MOTCAT Parameters
-	parser.add_argument('--bs_micro', type=int, default=256, help='The Size of Micro-batch (Default: 256)')  # new
-	parser.add_argument('--ot_impl', type=str, default='pot-uot-l2', help='impl of ot (default: pot-uot-l2)')  # new
-	parser.add_argument('--ot_reg', type=float, default=0.1, help='epsilon of OT (default: 0.1)')
-	parser.add_argument('--ot_tau', type=float, default=0.5, help='tau of UOT (default: 0.5)')
-
-	# PORPOISE Parameters
-	parser.add_argument('--gate_path', action='store_true', default=False)
-	parser.add_argument('--gate_omic', action='store_true', default=False)
-	parser.add_argument('--scale_dim1', type=int, default=8)
-	parser.add_argument('--scale_dim2', type=int, default=8)
-	parser.add_argument('--skip', action='store_true', default=False)
-	parser.add_argument('--dropinput', type=float, default=0.0)
-	parser.add_argument('--use_mlp', action='store_true', default=False)
-
 	### Training Parameters
 	parser.add_argument('--opt',             type=str, choices = ['adam', 'sgd'], default='adam')
 	parser.add_argument('--batch_size',      type=int, default=1, help='Batch Size (Default: 1, due to varying bag sizes)')
