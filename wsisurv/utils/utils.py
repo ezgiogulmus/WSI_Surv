@@ -204,7 +204,7 @@ def check_directories(args):
 	print("split_dir", args.split_dir)
 	assert os.path.isdir(args.split_dir)
 
-	param_code = args.model_type.upper()
+	param_code = args.model_type.replace("_", "").upper()
 		
 	if feat_extractor:
 		param_code += "_" + feat_extractor
